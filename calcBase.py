@@ -4,6 +4,8 @@
 # Expressions arithmétiques sans variables
 # -----------------------------------------------------------------------------
 
+from genereTreeGraphviz2 import printTreeGraph
+
 reserved = {
     'print': 'PRINT'
 }
@@ -13,7 +15,7 @@ tokens = (
     'NAME', 'ASSIGNMENT',
     'PLUS','TIMES','DIVIDE',
     'LPAREN','RPAREN', 'OR', 'AND', 'TRUE', 'FALSE', 'SEMI',
-    'LESSTHAN', 'BIGGERTHAN', 'EQUALS', 'NOTEQUALS'
+    'LOWER', 'HIGHER', 'EQUALS', 'NOTEQUALS'
     ) + tuple(reserved.values())
 
 # Tokens
@@ -31,8 +33,8 @@ t_SEMI    = r';'
 t_ASSIGNMENT  = r'='
 t_EQUALS  = r'=='
 t_NOTEQUALS  = r'!='
-t_LESSTHAN = r'<'
-t_BIGGERTHAN = r'>'
+t_LOWER = r'<'
+t_HIGHER = r'>'
 
 
 vars = {}
@@ -68,46 +70,57 @@ import ply.lex as lex
 lex.lex()
 
 precedence = (
-    ('left', 'PLUS', 'MINUS'),
-    ('left', 'TIMES', 'DIVIDE'),
+    ('left', 'OR'),
+    ('left', 'AND'),
+    ('nonassoc', 'LOWER', 'HIGHER', 'EQUALS', 'NOTEQUALS'),
+    ('left','PLUS','MINUS'),
+    ('left','TIMES','DIVIDE'),
 )
 
 
 def p_start_expr(p):
     'start : bloc'
 
+    p[0] = ('start', p[1])
+    print('Arbre de dérivation = ', p[0])
+    printTreeGraph(p[1])
+    evalInst(p[1])
+
 
 def p_bloc_expr(p):
     '''bloc : bloc statement SEMI
     | statement SEMI'''
 
+    if len(p) == 4:
+        p[0] = ('bloc', p[1], p[2])
+    else:
+        p[0] = ('bloc', p[1], None)
+
 
 def p_statement_expr(p):
     'statement : PRINT LPAREN expression RPAREN'
-    print(p[3])
+    p[0] = ('print', p[3])
 
 
 def p_names_expr(p):
     'statement : NAME ASSIGNMENT expression'
     vars[p[1]] = p[3]
-    print(f"La var {p[1]} = {p[3]}")
+    p[0] = ('=', p[1], p[3])
 
 
-def p_expression_binop_plus(p):
-    'expression : expression PLUS expression'
-    p[0] = p[1] + p[3]
+def p_expression_binop(p):
+    '''expression : expression PLUS expression
+                | expression MINUS expression
+                | expression TIMES expression
+                | expression OR expression
+                | expression AND expression
+                | expression LOWER expression
+                | expression HIGHER expression
+                | expression EQUALS expression
+                | expression NOTEQUALS expression
+                | expression DIVIDE expression'''
 
-
-def p_expression_binop_times(p):
-    'expression : expression TIMES expression'
-    p[0] = p[1] * p[3]
-
-
-def p_expression_binop_divide_and_minus(p):
-    '''expression : expression MINUS expression
-				| expression DIVIDE expression'''
-    if p[2] == '-': p[0] = p[1] - p[3]
-    else : p[0] = p[1] / p[3]	
+    p[0] = (p[2], p[1], p[3])
 
 
 def p_expression_group(p):
@@ -135,36 +148,6 @@ def p_expression_false(p):
     p[0] = False
 
 
-def p_expression_binop_or(p):
-    'expression : expression OR expression'
-    p[0] = p[1] or p[3]
-
-
-def p_expression_binop_and(p):
-    'expression : expression AND expression'
-    p[0] = p[1] and p[3]
-
-
-def p_expression_binop_lessthan(p):
-    'expression : expression LESSTHAN expression'
-    p[0] = p[1] < p[3]
-
-
-def p_expression_binop_biggerthan(p):
-    'expression : expression BIGGERTHAN expression'
-    p[0] = p[1] > p[3]
-
-
-def p_expression_binop_equals(p):
-    'expression : expression EQUALS expression'
-    p[0] = p[1] == p[3]
-
-
-def p_expression_binop_notequals(p):
-    'expression : expression NOTEQUALS expression'
-    p[0] = p[1] != p[3]
-
-
 def p_error(p):
     print("Syntax error at '%s'" % p.value)
 
@@ -174,17 +157,37 @@ import ply.yacc as yacc
 yacc.yacc()
 
 
-def eval(t):
-    print('eval de ', t)
+def evalExpr(t):
+    print('eval expr de ', t)
     if type(t) is int: return t
+    if type(t) is str: return vars.get(t)
     if type(t) is tuple:
 
-        if t[0] is '+':     return eval(t[1]) + eval(t[2])
-        if t[0] is '*':     return eval(t[1]) * eval(t[2])
+        if t[0] == '+':          return evalExpr(t[1]) + evalExpr(t[2])
+        if t[0] == '*':          return evalExpr(t[1]) * evalExpr(t[2])
+        if t[0] == '/':          return evalExpr(t[1]) / evalExpr(t[2])
+        if t[0] == '-':          return evalExpr(t[1]) - evalExpr(t[2])
+        if t[0] == '&':        return evalExpr(t[1]) and evalExpr(t[2])
+        if t[0] == '==':     return evalExpr(t[1]) == evalExpr(t[2])
+        if t[0] == '!=':  return evalExpr(t[1]) != evalExpr(t[2])
+        if t[0] == '|':         return evalExpr(t[1]) or evalExpr(t[2])
+        if t[0] == '<':          return evalExpr(t[1]) < evalExpr(t[2])
+        if t[0] == '>':          return evalExpr(t[1]) > evalExpr(t[2])
     return 'UNK'
 
 
-s = "print(2*3+1);" #input('calc > ')
-yacc.parse(s)
+def evalInst(t):
+    print('eval inst de ', t)
+    if type(t) is None:
+        return
 
+    if t[0] == 'print':
+        print(evalExpr(t[1]))
+
+    if t[0] == 'bloc':
+        print(evalInst(t[1]))
+
+
+s = "test = 12 + 34 * 8; print(1 != 2);"
+yacc.parse(s)
     
