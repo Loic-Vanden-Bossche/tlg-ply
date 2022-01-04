@@ -11,33 +11,36 @@ reserved = {
 }
 
 tokens = (
-    'NUMBER','MINUS',
+    'NUMBER', 'MINUS',
     'NAME', 'ASSIGNMENT',
-    'PLUS','TIMES','DIVIDE',
-    'LPAREN','RPAREN', 'OR', 'AND', 'TRUE', 'FALSE', 'SEMI',
-    'LOWER', 'HIGHER', 'EQUALS', 'NOTEQUALS'
+    'PLUS', 'TIMES', 'DIVIDE',
+    'LPAREN', 'RPAREN', 'OR',
+    'AND', 'TRUE', 'FALSE', 'SEMI',
+    'LOWER', 'HIGHER', 'EQUALS',
+    'NOTEQUALS'
     ) + tuple(reserved.values())
 
 # Tokens
-t_PLUS    = r'\+'
-t_MINUS   = r'-'
-t_TIMES   = r'\*'
-t_DIVIDE  = r'/'
-t_LPAREN  = r'\('
-t_RPAREN  = r'\)'
-t_OR      = r'\|'
-t_AND     = r'&'
-t_TRUE    = r'T'
-t_FALSE   = r'F'
-t_SEMI    = r';'
-t_ASSIGNMENT  = r'='
-t_EQUALS  = r'=='
+t_PLUS       = r'\+'
+t_MINUS      = r'-'
+t_TIMES      = r'\*'
+t_DIVIDE     = r'/'
+t_LPAREN     = r'\('
+t_RPAREN     = r'\)'
+t_OR         = r'\|'
+t_AND        = r'&'
+t_TRUE       = r'T'
+t_FALSE      = r'F'
+t_SEMI       = r';'
+t_ASSIGNMENT = r'='
+t_EQUALS     = r'=='
 t_NOTEQUALS  = r'!='
-t_LOWER = r'<'
-t_HIGHER = r'>'
+t_LOWER      = r'<'
+t_HIGHER     = r'>'
 
 
 vars = {}
+
 
 def t_NUMBER(t):
     r'\d+'
@@ -73,13 +76,13 @@ precedence = (
     ('left', 'OR'),
     ('left', 'AND'),
     ('nonassoc', 'LOWER', 'HIGHER', 'EQUALS', 'NOTEQUALS'),
-    ('left','PLUS','MINUS'),
-    ('left','TIMES','DIVIDE'),
+    ('left', 'PLUS', 'MINUS'),
+    ('left', 'TIMES', 'DIVIDE'),
 )
 
 
 def p_start_expr(p):
-    'start : bloc'
+    """start : bloc"""
 
     p[0] = ('start', p[1])
     print('Arbre de dérivation = ', p[0])
@@ -88,8 +91,8 @@ def p_start_expr(p):
 
 
 def p_bloc_expr(p):
-    '''bloc : bloc statement SEMI
-    | statement SEMI'''
+    """bloc : bloc statement SEMI
+    | statement SEMI"""
 
     if len(p) == 4:
         p[0] = ('bloc', p[1], p[2])
@@ -98,18 +101,18 @@ def p_bloc_expr(p):
 
 
 def p_statement_expr(p):
-    'statement : PRINT LPAREN expression RPAREN'
+    """statement : PRINT LPAREN expression RPAREN"""
     p[0] = ('print', p[3])
 
 
 def p_names_expr(p):
-    'statement : NAME ASSIGNMENT expression'
+    """statement : NAME ASSIGNMENT expression"""
     vars[p[1]] = p[3]
     p[0] = ('=', p[1], p[3])
 
 
 def p_expression_binop(p):
-    '''expression : expression PLUS expression
+    """expression : expression PLUS expression
                 | expression MINUS expression
                 | expression TIMES expression
                 | expression OR expression
@@ -118,33 +121,33 @@ def p_expression_binop(p):
                 | expression HIGHER expression
                 | expression EQUALS expression
                 | expression NOTEQUALS expression
-                | expression DIVIDE expression'''
+                | expression DIVIDE expression"""
 
     p[0] = (p[2], p[1], p[3])
 
 
 def p_expression_group(p):
-    'expression : LPAREN expression RPAREN'
+    """expression : LPAREN expression RPAREN"""
     p[0] = p[2]
 
 
 def p_expression_number(p):
-    'expression : NUMBER'
+    """expression : NUMBER"""
     p[0] = p[1]
 
 
 def p_expression_var(p):
-    'expression : NAME'
+    """expression : NAME"""
     p[0] = vars.get(p[1])
 
 
 def p_expression_true(p):
-    'expression : TRUE'
+    """expression : TRUE"""
     p[0] = True
 
 
 def p_expression_false(p):
-    'expression : FALSE'
+    """expression : FALSE"""
     p[0] = False
 
 
@@ -163,16 +166,16 @@ def evalExpr(t):
     if type(t) is str: return vars.get(t)
     if type(t) is tuple:
 
-        if t[0] == '+':          return evalExpr(t[1]) + evalExpr(t[2])
-        if t[0] == '*':          return evalExpr(t[1]) * evalExpr(t[2])
-        if t[0] == '/':          return evalExpr(t[1]) / evalExpr(t[2])
-        if t[0] == '-':          return evalExpr(t[1]) - evalExpr(t[2])
-        if t[0] == '&':        return evalExpr(t[1]) and evalExpr(t[2])
-        if t[0] == '==':     return evalExpr(t[1]) == evalExpr(t[2])
-        if t[0] == '!=':  return evalExpr(t[1]) != evalExpr(t[2])
-        if t[0] == '|':         return evalExpr(t[1]) or evalExpr(t[2])
-        if t[0] == '<':          return evalExpr(t[1]) < evalExpr(t[2])
-        if t[0] == '>':          return evalExpr(t[1]) > evalExpr(t[2])
+        if t[0] == '+' :  return evalExpr(t[1]) +   evalExpr(t[2])
+        if t[0] == '*' :  return evalExpr(t[1]) *   evalExpr(t[2])
+        if t[0] == '/' :  return evalExpr(t[1]) /   evalExpr(t[2])
+        if t[0] == '-' :  return evalExpr(t[1]) -   evalExpr(t[2])
+        if t[0] == '&' :  return evalExpr(t[1]) and evalExpr(t[2])
+        if t[0] == '==':  return evalExpr(t[1]) ==  evalExpr(t[2])
+        if t[0] == '!=':  return evalExpr(t[1]) !=  evalExpr(t[2])
+        if t[0] == '|' :  return evalExpr(t[1]) or  evalExpr(t[2])
+        if t[0] == '<' :  return evalExpr(t[1]) <   evalExpr(t[2])
+        if t[0] == '>' :  return evalExpr(t[1]) >   evalExpr(t[2])
     return 'UNK'
 
 
@@ -188,6 +191,6 @@ def evalInst(t):
         print(evalInst(t[1]))
 
 
-s = "test = 12 + 34 * 8; print(1 != 2);"
+s = "print(1+2);"
 yacc.parse(s)
     
