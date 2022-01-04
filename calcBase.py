@@ -67,6 +67,11 @@ def t_error(t):
 import ply.lex as lex
 lex.lex()
 
+precedence = (
+    ('left', 'PLUS', 'MINUS'),
+    ('left', 'TIMES', 'DIVIDE'),
+)
+
 
 def p_start_expr(p):
     'start : bloc'
