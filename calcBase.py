@@ -17,6 +17,8 @@ reserved = {
     'if'   : 'IF',
     'while': 'WHILE',
     'else' : 'ELSE',
+    'for'  : 'FOR',
+    'function': 'FUNCTION',
 }
 
 tokens = (
@@ -93,9 +95,9 @@ precedence = (
 def p_start_expr(p):
     """start : bloc"""
 
-    p[0] = ('start', p[1])
+    p[0] = ('START', p[1])
     print('Arbre de dérivation = ', p[0])
-    printTreeGraph(p[1])
+    printTreeGraph(p[0])
     evalInst(p[1])
 
 
@@ -109,9 +111,19 @@ def p_bloc_expr(p):
         p[0] = ('bloc', p[1], 'empty')
 
 
-def p_statement_expr(p):
+def p_print_expr(p):
     """statement : PRINT LPAREN expression RPAREN"""
     p[0] = ('print', p[3])
+
+
+def p_function_expr(p):
+    """statement : FUNCTION NAME LPAREN RPAREN LBRACKET bloc RBRACKET"""
+    p[0] = ('function', p[2], p[6])
+
+
+def p_call_expr(p):
+    """statement : NAME LPAREN RPAREN"""
+    p[0] = ('call', p[1])
 
 
 def p_if_expr(p):
@@ -139,10 +151,21 @@ def p_names_expr(p):
     p[0] = ('=', p[1], p[3])
 
 
-def p_expression_op(p):
+def p_for_expr(p):
+    """statement : FOR LPAREN statement SEMI expression SEMI statement RPAREN LBRACKET bloc RBRACKET"""
+    p[0] = ('for', p[3], p[5], p[7], p[10])
+
+
+def p_expression_op_left(p):
     """expression : MINUS expression
                 | NOT expression"""
     p[0] = ('u-' if p[1] == '-' else p[1], p[2])
+
+
+def p_op_right(p):
+    """statement : NAME PLUS PLUS
+                | NAME MINUS MINUS"""
+    p[0] = ('++', '=', p[1], (p[2], p[1], 1))
 
 
 def p_expression_binop(p):
@@ -199,6 +222,7 @@ import ply.yacc as yacc
 yacc.yacc()
 
 vars = {}
+functions = {}
 
 def evalExpr(t):
     debug('eval expr de ', t)
@@ -230,7 +254,11 @@ def evalInst(t):
     if type(t) == 'empty':
         return
 
-    if t[0] == '=':  vars[t[1]] = evalExpr(t[2])
+    if t[0] == '=': vars[t[1]] = evalExpr(t[2])
+    if t[1] == '=': vars[t[2]] = evalExpr(t[3])
+    if t[0] == 'function': functions[t[1]] = t[2]
+
+    if t[0] == 'call':  evalInst(functions[t[1]])
 
     if t[0] == 'print':
         print(evalExpr(t[1]))
@@ -256,7 +284,14 @@ def evalInst(t):
         while evalExpr(t[1]):
             evalInst(t[2])
 
+    if t[0] == 'for':
+        print(t)
+        evalInst(t[1])
+        while evalExpr(t[2]):
+            evalInst(t[4])
+            evalInst(t[3])
 
-s = "i = 0; while (i <= 3) { i = i + 1; print(i); };"
+
+s = "function test(){print(1);}; test();\n"
 yacc.parse(s)
     
