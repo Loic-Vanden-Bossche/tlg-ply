@@ -6,18 +6,28 @@
 
 from genereTreeGraphviz2 import printTreeGraph
 
+isDebug = False
+
+def debug(*args):
+    if isDebug: print(args)
+
+
 reserved = {
-    'print': 'PRINT'
+    'print': 'PRINT',
+    'if'   : 'IF',
+    'while': 'WHILE',
+    'else' : 'ELSE',
 }
 
 tokens = (
     'NUMBER', 'MINUS',
-    'NAME', 'ASSIGNMENT',
+    'NAME',
     'PLUS', 'TIMES', 'DIVIDE',
     'LPAREN', 'RPAREN', 'OR',
     'AND', 'TRUE', 'FALSE', 'SEMI',
-    'LOWER', 'HIGHER', 'EQUALS',
-    'NOTEQUALS'
+    'LOWER', 'HIGHER', 'EQUAL',
+    'LBRACKET', 'RBRACKET',
+    'NOT'
     ) + tuple(reserved.values())
 
 # Tokens
@@ -27,19 +37,17 @@ t_TIMES      = r'\*'
 t_DIVIDE     = r'/'
 t_LPAREN     = r'\('
 t_RPAREN     = r'\)'
+t_LBRACKET   = r'\{'
+t_RBRACKET   = r'\}'
 t_OR         = r'\|'
 t_AND        = r'&'
 t_TRUE       = r'T'
 t_FALSE      = r'F'
 t_SEMI       = r';'
-t_ASSIGNMENT = r'='
-t_EQUALS     = r'=='
-t_NOTEQUALS  = r'!='
+t_EQUAL      = r'='
+t_NOT        = r'!'
 t_LOWER      = r'<'
 t_HIGHER     = r'>'
-
-
-vars = {}
 
 
 def t_NUMBER(t):
@@ -49,7 +57,7 @@ def t_NUMBER(t):
 
 
 def t_NAME(t):
-    r'[a-zA-Z_][a-zA-Z_0-9]+'
+    r'[a-zA-Z_][a-zA-Z_0-9]*'
     t.type = reserved.get(t.value, 'NAME')
     return t
 
@@ -75,7 +83,8 @@ lex.lex()
 precedence = (
     ('left', 'OR'),
     ('left', 'AND'),
-    ('nonassoc', 'LOWER', 'HIGHER', 'EQUALS', 'NOTEQUALS'),
+    ('left', 'NOT'),
+    ('nonassoc', 'LOWER', 'HIGHER', 'EQUAL'),
     ('left', 'PLUS', 'MINUS'),
     ('left', 'TIMES', 'DIVIDE'),
 )
@@ -97,7 +106,7 @@ def p_bloc_expr(p):
     if len(p) == 4:
         p[0] = ('bloc', p[1], p[2])
     else:
-        p[0] = ('bloc', p[1], None)
+        p[0] = ('bloc', p[1], 'empty')
 
 
 def p_statement_expr(p):
@@ -105,10 +114,35 @@ def p_statement_expr(p):
     p[0] = ('print', p[3])
 
 
+def p_if_expr(p):
+    """statement : IF LPAREN expression RPAREN LBRACKET bloc RBRACKET
+                | IF LPAREN expression RPAREN LBRACKET bloc RBRACKET else"""
+
+    if len(p) == 8:
+        p[0] = ('if', p[3], p[6])
+    elif len(p) == 9:
+        p[0] = ('if-else', p[3], p[6], p[8])
+
+
+def p_else(p):
+    """else : ELSE LBRACKET bloc RBRACKET"""
+    p[0] = ('else', p[3])
+
+
+def p_while_expr(p):
+    """statement : WHILE LPAREN expression RPAREN LBRACKET bloc RBRACKET"""
+    p[0] = ('while', p[3], p[6])
+
+
 def p_names_expr(p):
-    """statement : NAME ASSIGNMENT expression"""
-    vars[p[1]] = p[3]
+    """statement : NAME EQUAL expression"""
     p[0] = ('=', p[1], p[3])
+
+
+def p_expression_op(p):
+    """expression : MINUS expression
+                | NOT expression"""
+    p[0] = ('u-' if p[1] == '-' else p[1], p[2])
 
 
 def p_expression_binop(p):
@@ -118,12 +152,17 @@ def p_expression_binop(p):
                 | expression OR expression
                 | expression AND expression
                 | expression LOWER expression
+                | expression LOWER EQUAL expression
                 | expression HIGHER expression
-                | expression EQUALS expression
-                | expression NOTEQUALS expression
+                | expression HIGHER EQUAL expression
+                | expression EQUAL EQUAL expression
+                | expression NOT EQUAL expression
                 | expression DIVIDE expression"""
 
-    p[0] = (p[2], p[1], p[3])
+    if len(p) == 5:
+        p[0] = (p[2] + p[3], p[1], p[4])
+    else:
+        p[0] = (p[2], p[1], p[3])
 
 
 def p_expression_group(p):
@@ -138,7 +177,7 @@ def p_expression_number(p):
 
 def p_expression_var(p):
     """expression : NAME"""
-    p[0] = vars.get(p[1])
+    p[0] = p[1]
 
 
 def p_expression_true(p):
@@ -159,38 +198,65 @@ import ply.yacc as yacc
 
 yacc.yacc()
 
+vars = {}
 
 def evalExpr(t):
-    print('eval expr de ', t)
+    debug('eval expr de ', t)
+    if type(t) is bool: return t
     if type(t) is int: return t
-    if type(t) is str: return vars.get(t)
+    if type(t) is str: return vars[t]
     if type(t) is tuple:
 
         if t[0] == '+' :  return evalExpr(t[1]) +   evalExpr(t[2])
         if t[0] == '*' :  return evalExpr(t[1]) *   evalExpr(t[2])
         if t[0] == '/' :  return evalExpr(t[1]) /   evalExpr(t[2])
         if t[0] == '-' :  return evalExpr(t[1]) -   evalExpr(t[2])
-        if t[0] == '&' :  return evalExpr(t[1]) and evalExpr(t[2])
         if t[0] == '==':  return evalExpr(t[1]) ==  evalExpr(t[2])
         if t[0] == '!=':  return evalExpr(t[1]) !=  evalExpr(t[2])
-        if t[0] == '|' :  return evalExpr(t[1]) or  evalExpr(t[2])
         if t[0] == '<' :  return evalExpr(t[1]) <   evalExpr(t[2])
+        if t[0] == '<=':  return evalExpr(t[1]) <=  evalExpr(t[2])
         if t[0] == '>' :  return evalExpr(t[1]) >   evalExpr(t[2])
+        if t[0] == '>=':  return evalExpr(t[1]) >=  evalExpr(t[2])
+        if t[0] == '&' :  return bool(evalExpr(t[1])) and bool(evalExpr(t[2]))
+        if t[0] == '|' :  return bool(evalExpr(t[1])) or bool(evalExpr(t[2]))
+        if t[0] == 'u-':  return -evalExpr(t[1])
+        if t[0] == '!' :  return not evalExpr(t[1])
     return 'UNK'
 
 
 def evalInst(t):
-    print('eval inst de ', t)
-    if type(t) is None:
+    debug('Eval inst de', t)
+
+    if type(t) == 'empty':
         return
+
+    if t[0] == '=':  vars[t[1]] = evalExpr(t[2])
 
     if t[0] == 'print':
         print(evalExpr(t[1]))
 
     if t[0] == 'bloc':
-        print(evalInst(t[1]))
+        evalInst(t[1])
+        evalInst(t[2])
+
+    if t[0] == 'if':
+        if evalExpr(t[1]):
+            evalInst(t[2])
+
+    if t[0] == 'if-else':
+        if evalExpr(t[1]):
+            evalInst(t[2])
+        else:
+            evalInst(t[3])
+
+    if t[0] == 'else':
+        evalInst(t[1])
+
+    if t[0] == 'while':
+        while evalExpr(t[1]):
+            evalInst(t[2])
 
 
-s = "print(1+2);"
+s = "i = 0; while (i <= 3) { i = i + 1; print(i); };"
 yacc.parse(s)
     
