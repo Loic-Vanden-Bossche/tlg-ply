@@ -8,48 +8,50 @@ from genereTreeGraphviz2 import printTreeGraph
 
 isDebug = False
 
+
 def debug(*args):
     if isDebug: print(args)
 
 
 reserved = {
     'print': 'PRINT',
-    'if'   : 'IF',
+    'if': 'IF',
     'while': 'WHILE',
-    'else' : 'ELSE',
-    'for'  : 'FOR',
+    'else': 'ELSE',
+    'for': 'FOR',
     'function': 'FUNCTION',
 }
 
 tokens = (
-    'NUMBER', 'MINUS',
-    'NAME',
-    'PLUS', 'TIMES', 'DIVIDE',
-    'LPAREN', 'RPAREN', 'OR',
-    'AND', 'TRUE', 'FALSE', 'SEMI',
-    'LOWER', 'HIGHER', 'EQUAL',
-    'LBRACKET', 'RBRACKET',
-    'NOT'
-    ) + tuple(reserved.values())
+             'NUMBER', 'MINUS',
+             'NAME', 'COMMA',
+             'PLUS', 'TIMES', 'DIVIDE',
+             'LPAREN', 'RPAREN', 'OR',
+             'AND', 'TRUE', 'FALSE', 'SEMI',
+             'LOWER', 'HIGHER', 'EQUAL',
+             'LBRACKET', 'RBRACKET',
+             'NOT'
+         ) + tuple(reserved.values())
 
 # Tokens
-t_PLUS       = r'\+'
-t_MINUS      = r'-'
-t_TIMES      = r'\*'
-t_DIVIDE     = r'/'
-t_LPAREN     = r'\('
-t_RPAREN     = r'\)'
-t_LBRACKET   = r'\{'
-t_RBRACKET   = r'\}'
-t_OR         = r'\|'
-t_AND        = r'&'
-t_TRUE       = r'T'
-t_FALSE      = r'F'
-t_SEMI       = r';'
-t_EQUAL      = r'='
-t_NOT        = r'!'
-t_LOWER      = r'<'
-t_HIGHER     = r'>'
+t_PLUS = r'\+'
+t_MINUS = r'-'
+t_TIMES = r'\*'
+t_DIVIDE = r'/'
+t_LPAREN = r'\('
+t_RPAREN = r'\)'
+t_LBRACKET = r'\{'
+t_RBRACKET = r'\}'
+t_OR = r'\|'
+t_AND = r'&'
+t_TRUE = r'T'
+t_FALSE = r'F'
+t_SEMI = r';'
+t_EQUAL = r'='
+t_NOT = r'!'
+t_LOWER = r'<'
+t_HIGHER = r'>'
+t_COMMA = r','
 
 
 def t_NUMBER(t):
@@ -80,6 +82,7 @@ def t_error(t):
 
 # Build the lexer
 import ply.lex as lex
+
 lex.lex()
 
 precedence = (
@@ -117,13 +120,46 @@ def p_print_expr(p):
 
 
 def p_function_expr(p):
-    """statement : FUNCTION NAME LPAREN RPAREN LBRACKET bloc RBRACKET"""
-    p[0] = ('function', p[2], p[6])
+    """statement : FUNCTION NAME LPAREN parameter RPAREN LBRACKET bloc RBRACKET
+            | FUNCTION NAME LPAREN RPAREN LBRACKET bloc RBRACKET"""
+    if len(p) == 9:
+        p[0] = ('function', (p[2], p[4], p[7]))
+    else:
+        p[0] = ('function', (p[2], 'empty', p[6]))
+
+
+def p_function_parameter(p):
+    """parameter : NAME
+            | parameter COMMA parameter"""
+
+    if len(p) == 2:
+        p[0] = ('param', p[1])
+    elif len(p) == 4:
+        p[0] = (*p[1], p[3])
+    else:
+        p[0] = ('param', 'empty')
 
 
 def p_call_expr(p):
-    """statement : NAME LPAREN RPAREN"""
-    p[0] = ('call', p[1])
+    """statement : NAME LPAREN callParameter RPAREN
+                | NAME LPAREN RPAREN"""
+
+    if len(p) == 5:
+        p[0] = ('call', p[1], p[3])
+    else:
+        p[0] = ('call', p[1], 'empty')
+
+
+def p_call_parameter(p):
+    """callParameter : expression
+            | callParameter COMMA callParameter"""
+
+    if len(p) == 2:
+        p[0] = ('exp', p[1])
+    elif len(p) == 4:
+        p[0] = (*p[1], p[3])
+    else:
+        p[0] = ('exp', 'empty')
 
 
 def p_if_expr(p):
@@ -224,6 +260,7 @@ yacc.yacc()
 vars = {}
 functions = {}
 
+
 def evalExpr(t):
     debug('eval expr de ', t)
     if type(t) is bool: return t
@@ -231,20 +268,20 @@ def evalExpr(t):
     if type(t) is str: return vars[t]
     if type(t) is tuple:
 
-        if t[0] == '+' :  return evalExpr(t[1]) +   evalExpr(t[2])
-        if t[0] == '*' :  return evalExpr(t[1]) *   evalExpr(t[2])
-        if t[0] == '/' :  return evalExpr(t[1]) /   evalExpr(t[2])
-        if t[0] == '-' :  return evalExpr(t[1]) -   evalExpr(t[2])
-        if t[0] == '==':  return evalExpr(t[1]) ==  evalExpr(t[2])
-        if t[0] == '!=':  return evalExpr(t[1]) !=  evalExpr(t[2])
-        if t[0] == '<' :  return evalExpr(t[1]) <   evalExpr(t[2])
-        if t[0] == '<=':  return evalExpr(t[1]) <=  evalExpr(t[2])
-        if t[0] == '>' :  return evalExpr(t[1]) >   evalExpr(t[2])
-        if t[0] == '>=':  return evalExpr(t[1]) >=  evalExpr(t[2])
-        if t[0] == '&' :  return bool(evalExpr(t[1])) and bool(evalExpr(t[2]))
-        if t[0] == '|' :  return bool(evalExpr(t[1])) or bool(evalExpr(t[2]))
+        if t[0] == '+':  return evalExpr(t[1]) + evalExpr(t[2])
+        if t[0] == '*':  return evalExpr(t[1]) * evalExpr(t[2])
+        if t[0] == '/':  return evalExpr(t[1]) / evalExpr(t[2])
+        if t[0] == '-':  return evalExpr(t[1]) - evalExpr(t[2])
+        if t[0] == '==':  return evalExpr(t[1]) == evalExpr(t[2])
+        if t[0] == '!=':  return evalExpr(t[1]) != evalExpr(t[2])
+        if t[0] == '<':  return evalExpr(t[1]) < evalExpr(t[2])
+        if t[0] == '<=':  return evalExpr(t[1]) <= evalExpr(t[2])
+        if t[0] == '>':  return evalExpr(t[1]) > evalExpr(t[2])
+        if t[0] == '>=':  return evalExpr(t[1]) >= evalExpr(t[2])
+        if t[0] == '&':  return bool(evalExpr(t[1])) and bool(evalExpr(t[2]))
+        if t[0] == '|':  return bool(evalExpr(t[1])) or bool(evalExpr(t[2]))
         if t[0] == 'u-':  return -evalExpr(t[1])
-        if t[0] == '!' :  return not evalExpr(t[1])
+        if t[0] == '!':  return not evalExpr(t[1])
     return 'UNK'
 
 
@@ -256,9 +293,26 @@ def evalInst(t):
 
     if t[0] == '=': vars[t[1]] = evalExpr(t[2])
     if t[1] == '=': vars[t[2]] = evalExpr(t[3])
-    if t[0] == 'function': functions[t[1]] = t[2]
+    if t[0] == 'function': functions[t[1][0]] = t[1]
 
-    if t[0] == 'call':  evalInst(functions[t[1]])
+    if t[0] == 'call':
+
+        try:
+
+            if functions[t[1]][1] != 'empty' and t[2] != 'empty':
+
+                params = [p for p in functions[t[1]][1] if p != 'param']
+                expressions = [e for e in t[2] if e != 'exp']
+
+                for i in [(params[i], expressions[i]) for i in range(0, len(params))]:
+                    vars[i[0]] = evalExpr(i[1])
+
+            elif len(functions[t[1]][1]) != len(t[2]):
+                raise Exception
+        except Exception:
+            raise Exception('Wrong number of parameters')
+
+        evalInst(functions[t[1]][2])
 
     if t[0] == 'print':
         print(evalExpr(t[1]))
@@ -292,6 +346,5 @@ def evalInst(t):
             evalInst(t[3])
 
 
-s = "function test(){print(1);}; test();\n"
+s = "function test(){print(1);}; test(1);\n"
 yacc.parse(s)
-    
