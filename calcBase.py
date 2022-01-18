@@ -261,90 +261,102 @@ vars = {}
 functions = {}
 
 
-def evalExpr(t):
+def evalExpr(t, s_vars):
     debug('eval expr de ', t)
     if type(t) is bool: return t
     if type(t) is int: return t
-    if type(t) is str: return vars[t]
+    if type(t) is str: return s_vars[t]
     if type(t) is tuple:
 
-        if t[0] == '+':  return evalExpr(t[1]) + evalExpr(t[2])
-        if t[0] == '*':  return evalExpr(t[1]) * evalExpr(t[2])
-        if t[0] == '/':  return evalExpr(t[1]) / evalExpr(t[2])
-        if t[0] == '-':  return evalExpr(t[1]) - evalExpr(t[2])
-        if t[0] == '==':  return evalExpr(t[1]) == evalExpr(t[2])
-        if t[0] == '!=':  return evalExpr(t[1]) != evalExpr(t[2])
-        if t[0] == '<':  return evalExpr(t[1]) < evalExpr(t[2])
-        if t[0] == '<=':  return evalExpr(t[1]) <= evalExpr(t[2])
-        if t[0] == '>':  return evalExpr(t[1]) > evalExpr(t[2])
-        if t[0] == '>=':  return evalExpr(t[1]) >= evalExpr(t[2])
-        if t[0] == '&':  return bool(evalExpr(t[1])) and bool(evalExpr(t[2]))
-        if t[0] == '|':  return bool(evalExpr(t[1])) or bool(evalExpr(t[2]))
-        if t[0] == 'u-':  return -evalExpr(t[1])
-        if t[0] == '!':  return not evalExpr(t[1])
+        if t[0] == '+' : return evalExpr(t[1], s_vars) + evalExpr(t[2], s_vars)
+        if t[0] == '*' : return evalExpr(t[1], s_vars) * evalExpr(t[2], s_vars)
+        if t[0] == '/' : return evalExpr(t[1], s_vars) / evalExpr(t[2], s_vars)
+        if t[0] == '-' : return evalExpr(t[1], s_vars) - evalExpr(t[2], s_vars)
+        if t[0] == '==': return evalExpr(t[1], s_vars) == evalExpr(t[2], s_vars)
+        if t[0] == '!=': return evalExpr(t[1], s_vars) != evalExpr(t[2], s_vars)
+        if t[0] == '<' : return evalExpr(t[1], s_vars) < evalExpr(t[2], s_vars)
+        if t[0] == '<=': return evalExpr(t[1], s_vars) <= evalExpr(t[2], s_vars)
+        if t[0] == '>' : return evalExpr(t[1], s_vars) > evalExpr(t[2], s_vars)
+        if t[0] == '>=': return evalExpr(t[1], s_vars) >= evalExpr(t[2], s_vars)
+        if t[0] == '&' : return bool(evalExpr(t[1], s_vars)) and bool(evalExpr(t[2], s_vars))
+        if t[0] == '|' : return bool(evalExpr(t[1], s_vars)) or bool(evalExpr(t[2], s_vars))
+        if t[0] == 'u-': return -evalExpr(t[1], s_vars)
+        if t[0] == '!' : return not evalExpr(t[1], s_vars)
     return 'UNK'
 
 
-def evalInst(t):
+def evalInst(t, ps_vars=None):
+
+    if ps_vars is None:
+        ps_vars = {}
+
+    s_vars = ps_vars
+
     debug('Eval inst de', t)
 
     if type(t) == 'empty':
         return
 
-    if t[0] == '=': vars[t[1]] = evalExpr(t[2])
-    if t[1] == '=': vars[t[2]] = evalExpr(t[3])
-    if t[0] == 'function': functions[t[1][0]] = t[1]
+    if t[0] == '=':
+        s_vars[t[1]] = evalExpr(t[2], s_vars)
+
+    if t[1] == '=':
+        s_vars[t[2]] = evalExpr(t[3], s_vars)
+
+    if t[0] == 'function':
+        functions[t[1][0]] = t[1]
 
     if t[0] == 'call':
 
         try:
-
             if functions[t[1]][1] != 'empty' and t[2] != 'empty':
 
                 params = [p for p in functions[t[1]][1] if p != 'param']
                 expressions = [e for e in t[2] if e != 'exp']
 
+                s_vars = ps_vars.copy()
+
                 for i in [(params[i], expressions[i]) for i in range(0, len(params))]:
-                    vars[i[0]] = evalExpr(i[1])
+                    s_vars[i[0]] = evalExpr(i[1], s_vars)
 
             elif len(functions[t[1]][1]) != len(t[2]):
                 raise Exception
         except Exception:
             raise Exception('Wrong number of parameters')
 
-        evalInst(functions[t[1]][2])
+        evalInst(functions[t[1]][2], s_vars)
 
     if t[0] == 'print':
-        print(evalExpr(t[1]))
+        print(evalExpr(t[1], s_vars))
 
     if t[0] == 'bloc':
-        evalInst(t[1])
-        evalInst(t[2])
+        print('blocs', t[1], t[2])
+        evalInst(t[1], s_vars)
+        evalInst(t[2], s_vars)
 
     if t[0] == 'if':
-        if evalExpr(t[1]):
-            evalInst(t[2])
+        if evalExpr(t[1], s_vars):
+            evalInst(t[2], ps_vars.copy())
 
     if t[0] == 'if-else':
-        if evalExpr(t[1]):
-            evalInst(t[2])
+        if evalExpr(t[1], s_vars):
+            evalInst(t[2], ps_vars.copy())
         else:
-            evalInst(t[3])
+            evalInst(t[3], ps_vars.copy())
 
     if t[0] == 'else':
-        evalInst(t[1])
+        evalInst(t[1], ps_vars.copy())
 
     if t[0] == 'while':
-        while evalExpr(t[1]):
-            evalInst(t[2])
+        while evalExpr(t[1], s_vars):
+            evalInst(t[2], ps_vars.copy())
 
     if t[0] == 'for':
-        print(t)
-        evalInst(t[1])
-        while evalExpr(t[2]):
-            evalInst(t[4])
-            evalInst(t[3])
+        evalInst(t[1], s_vars)
+        while evalExpr(t[2], s_vars):
+            evalInst(t[4], ps_vars.copy())
+            evalInst(t[3], ps_vars.copy())
 
 
-s = "function test(){print(1);}; test(1);\n"
+s = "function test(a) { y = 2; function test2(b) { print(y); }; test2(a); }; test(2);\n"
 yacc.parse(s)
