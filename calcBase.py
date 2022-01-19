@@ -320,8 +320,8 @@ def evalInst(t, ps_vars=None):
                     s_vars[i[0]] = evalExpr(i[1], s_vars)
 
             elif len(functions[t[1]][1]) != len(t[2]):
-                raise Exception
-        except Exception:
+                raise ValueError
+        except ValueError:
             raise Exception('Wrong number of parameters')
 
         evalInst(functions[t[1]][2], s_vars)
@@ -358,5 +358,5 @@ def evalInst(t, ps_vars=None):
             evalInst(t[3], ps_vars.copy())
 
 
-s = "function test(a) { y = 2; function test2(b) { print(y); }; test2(a); }; test(2);\n"
+s = "function test() { return; }; test();\n"
 yacc.parse(s)
