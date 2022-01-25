@@ -144,7 +144,7 @@ def p_print_expr(p):
 
 
 def p_function_expr(p):
-    """statement : FUNCTION NAME LPAREN parameter RPAREN LBRACKET bloc RBRACKET
+    """statement : FUNCTION NAME LPAREN parameter RPAREN LBRACKET fbloc RBRACKET
             | FUNCTION NAME LPAREN RPAREN LBRACKET fbloc RBRACKET"""
     if len(p) == 9:
         p[0] = ('function', (p[2], p[4], p[7]))
