@@ -20,6 +20,7 @@ reserved = {
     'else': 'ELSE',
     'for': 'FOR',
     'function': 'FUNCTION',
+    'return': 'RETURN',
 }
 
 tokens = (
@@ -114,6 +115,29 @@ def p_bloc_expr(p):
         p[0] = ('bloc', p[1], 'empty')
 
 
+def p_f_bloc_expr(p):
+    """fbloc : fbloc out
+        | out"""
+    if len(p) == 3:
+        p[0] = ('fbloc', p[1], p[2])
+    else:
+        p[0] = ('fbloc', p[1], 'empty')
+
+
+def p_out_expr(p):
+    """out : return
+        | bloc"""
+    p[0] = (p[1])
+
+def p_return_expr(p):
+    """return : RETURN SEMI
+        | RETURN expression SEMI"""
+    if len(p) == 4:
+        p[0] = ('return', p[2])
+    else:
+        p[0] = ('return', 'empty')
+
+
 def p_print_expr(p):
     """statement : PRINT LPAREN expression RPAREN"""
     p[0] = ('print', p[3])
@@ -121,7 +145,7 @@ def p_print_expr(p):
 
 def p_function_expr(p):
     """statement : FUNCTION NAME LPAREN parameter RPAREN LBRACKET bloc RBRACKET
-            | FUNCTION NAME LPAREN RPAREN LBRACKET bloc RBRACKET"""
+            | FUNCTION NAME LPAREN RPAREN LBRACKET fbloc RBRACKET"""
     if len(p) == 9:
         p[0] = ('function', (p[2], p[4], p[7]))
     else:
@@ -284,6 +308,19 @@ def evalExpr(t, s_vars):
         if t[0] == '!' : return not evalExpr(t[1], s_vars)
     return 'UNK'
 
+def evalFunc(t, s_vars):
+
+    if t[0] == 'fbloc':
+
+        evalFunc(t[1], s_vars)
+        evalFunc(t[2], s_vars)
+
+    if t[0] == 'bloc':
+        evalInst(t[1], s_vars)
+        evalInst(t[2], s_vars)
+
+    if t[0] == 'return':
+        print('return')
 
 def evalInst(t, ps_vars=None):
 
@@ -324,13 +361,12 @@ def evalInst(t, ps_vars=None):
         except ValueError:
             raise Exception('Wrong number of parameters')
 
-        evalInst(functions[t[1]][2], s_vars)
+        evalFunc(functions[t[1]][2], s_vars)
 
     if t[0] == 'print':
         print(evalExpr(t[1], s_vars))
 
     if t[0] == 'bloc':
-        print('blocs', t[1], t[2])
         evalInst(t[1], s_vars)
         evalInst(t[2], s_vars)
 
@@ -358,5 +394,5 @@ def evalInst(t, ps_vars=None):
             evalInst(t[3], ps_vars.copy())
 
 
-s = "function test() { print(1); }; test();\n"
+s = "function test() { print(1); return; return; print(1); }; test();\n"
 yacc.parse(s)
