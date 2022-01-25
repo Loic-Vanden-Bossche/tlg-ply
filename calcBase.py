@@ -23,35 +23,35 @@ reserved = {
 }
 
 tokens = (
-             'NUMBER', 'MINUS',
-             'NAME', 'COMMA',
-             'PLUS', 'TIMES', 'DIVIDE',
-             'LPAREN', 'RPAREN', 'OR',
-             'AND', 'TRUE', 'FALSE', 'SEMI',
-             'LOWER', 'HIGHER', 'EQUAL',
-             'LBRACKET', 'RBRACKET',
-             'NOT'
-         ) + tuple(reserved.values())
+    'NUMBER', 'MINUS',
+    'NAME', 'COMMA',
+    'PLUS', 'TIMES', 'DIVIDE',
+    'LPAREN', 'RPAREN', 'OR',
+    'AND', 'TRUE', 'FALSE', 'SEMI',
+    'LOWER', 'HIGHER', 'EQUAL',
+    'LBRACKET', 'RBRACKET',
+    'NOT'
+) + tuple(reserved.values())
 
 # Tokens
-t_PLUS = r'\+'
-t_MINUS = r'-'
-t_TIMES = r'\*'
-t_DIVIDE = r'/'
-t_LPAREN = r'\('
-t_RPAREN = r'\)'
+t_PLUS     = r'\+'
+t_MINUS    = r'-'
+t_TIMES    = r'\*'
+t_DIVIDE   = r'/'
+t_LPAREN   = r'\('
+t_RPAREN   = r'\)'
 t_LBRACKET = r'\{'
 t_RBRACKET = r'\}'
-t_OR = r'\|'
-t_AND = r'&'
-t_TRUE = r'T'
-t_FALSE = r'F'
-t_SEMI = r';'
-t_EQUAL = r'='
-t_NOT = r'!'
-t_LOWER = r'<'
-t_HIGHER = r'>'
-t_COMMA = r','
+t_OR       = r'\|'
+t_AND      = r'&'
+t_TRUE     = r'T'
+t_FALSE    = r'F'
+t_SEMI     = r';'
+t_EQUAL    = r'='
+t_NOT      = r'!'
+t_LOWER    = r'<'
+t_HIGHER   = r'>'
+t_COMMA    = r','
 
 
 def t_NUMBER(t):
@@ -268,15 +268,15 @@ def evalExpr(t, s_vars):
     if type(t) is str: return s_vars[t]
     if type(t) is tuple:
 
-        if t[0] == '+' : return evalExpr(t[1], s_vars) + evalExpr(t[2], s_vars)
-        if t[0] == '*' : return evalExpr(t[1], s_vars) * evalExpr(t[2], s_vars)
-        if t[0] == '/' : return evalExpr(t[1], s_vars) / evalExpr(t[2], s_vars)
-        if t[0] == '-' : return evalExpr(t[1], s_vars) - evalExpr(t[2], s_vars)
+        if t[0] == '+' : return evalExpr(t[1], s_vars) +  evalExpr(t[2], s_vars)
+        if t[0] == '*' : return evalExpr(t[1], s_vars) *  evalExpr(t[2], s_vars)
+        if t[0] == '/' : return evalExpr(t[1], s_vars) /  evalExpr(t[2], s_vars)
+        if t[0] == '-' : return evalExpr(t[1], s_vars) -  evalExpr(t[2], s_vars)
         if t[0] == '==': return evalExpr(t[1], s_vars) == evalExpr(t[2], s_vars)
         if t[0] == '!=': return evalExpr(t[1], s_vars) != evalExpr(t[2], s_vars)
-        if t[0] == '<' : return evalExpr(t[1], s_vars) < evalExpr(t[2], s_vars)
+        if t[0] == '<' : return evalExpr(t[1], s_vars) <  evalExpr(t[2], s_vars)
         if t[0] == '<=': return evalExpr(t[1], s_vars) <= evalExpr(t[2], s_vars)
-        if t[0] == '>' : return evalExpr(t[1], s_vars) > evalExpr(t[2], s_vars)
+        if t[0] == '>' : return evalExpr(t[1], s_vars) >  evalExpr(t[2], s_vars)
         if t[0] == '>=': return evalExpr(t[1], s_vars) >= evalExpr(t[2], s_vars)
         if t[0] == '&' : return bool(evalExpr(t[1], s_vars)) and bool(evalExpr(t[2], s_vars))
         if t[0] == '|' : return bool(evalExpr(t[1], s_vars)) or bool(evalExpr(t[2], s_vars))
@@ -358,5 +358,5 @@ def evalInst(t, ps_vars=None):
             evalInst(t[3], ps_vars.copy())
 
 
-s = "function test() { return; }; test();\n"
+s = "function test() { print(1); }; test();\n"
 yacc.parse(s)
