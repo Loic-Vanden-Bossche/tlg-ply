@@ -3,10 +3,13 @@
 #
 # Loïc Vanden Bossche | Enzo Soares
 # -----------------------------------------------------------------------------
+import pprint
+from more_itertools import zip_equal, more as iter_errors
 
 from genereTreeGraphviz2 import printTreeGraph
 
 isDebug = False
+
 
 def debug(*args):
     if isDebug: print(args)
@@ -159,10 +162,8 @@ def p_function_parameter(p):
 
     if len(p) == 2:
         p[0] = ('param', p[1])
-    elif len(p) == 4:
-        p[0] = (*p[1], p[3])
     else:
-        p[0] = ('param', 'empty')
+        p[0] = (*p[1], p[3])
 
 
 def p_call_expr(p):
@@ -181,10 +182,8 @@ def p_call_parameter(p):
 
     if len(p) == 2:
         p[0] = ('exp', p[1])
-    elif len(p) == 4:
-        p[0] = (*p[1], p[3])
     else:
-        p[0] = ('exp', 'empty')
+        p[0] = (*p[1], p[3])
 
 
 def p_if_expr(p):
@@ -290,36 +289,40 @@ yacc.yacc()
 functions = {}
 stack = [('scope', {})]
 
+
 def evalExpr(t):
     debug('eval expr de ', t)
-    if type(t) is bool : return t
-    if type(t) is int  : return t
-    if type(t) is str  : return get_var(t)
+    if type(t) is bool: return t
+    if type(t) is int: return t
+    if type(t) is str: return get_var(t)
     if type(t) is tuple:
-        if t[0] == '+' : return evalExpr(t[1]) +  evalExpr(t[2])
-        if t[0] == '*' : return evalExpr(t[1]) *  evalExpr(t[2])
-        if t[0] == '/' : return evalExpr(t[1]) /  evalExpr(t[2])
-        if t[0] == '-' : return evalExpr(t[1]) -  evalExpr(t[2])
+        if t[0] == '+': return evalExpr(t[1]) + evalExpr(t[2])
+        if t[0] == '*': return evalExpr(t[1]) * evalExpr(t[2])
+        if t[0] == '/': return evalExpr(t[1]) / evalExpr(t[2])
+        if t[0] == '-': return evalExpr(t[1]) - evalExpr(t[2])
         if t[0] == '==': return evalExpr(t[1]) == evalExpr(t[2])
         if t[0] == '!=': return evalExpr(t[1]) != evalExpr(t[2])
-        if t[0] == '<' : return evalExpr(t[1]) <  evalExpr(t[2])
+        if t[0] == '<': return evalExpr(t[1]) < evalExpr(t[2])
         if t[0] == '<=': return evalExpr(t[1]) <= evalExpr(t[2])
-        if t[0] == '>' : return evalExpr(t[1]) >  evalExpr(t[2])
+        if t[0] == '>': return evalExpr(t[1]) > evalExpr(t[2])
         if t[0] == '>=': return evalExpr(t[1]) >= evalExpr(t[2])
-        if t[0] == '&' : return bool(evalExpr(t[1])) and bool(evalExpr(t[2]))
-        if t[0] == '|' : return bool(evalExpr(t[1])) or  bool(evalExpr(t[2]))
+        if t[0] == '&': return bool(evalExpr(t[1])) and bool(evalExpr(t[2]))
+        if t[0] == '|': return bool(evalExpr(t[1])) or bool(evalExpr(t[2]))
         if t[0] == 'u-': return -evalExpr(t[1])
-        if t[0] == '!' : return not evalExpr(t[1])
+        if t[0] == '!': return not evalExpr(t[1])
     return 'UNK'
+
 
 def get_scopes():
     return [scope[1] for scope in stack if scope[0] == 'scope'][::-1]
+
 
 def get_var(var_name):
     for scope in get_scopes():
         if var_name in scope:
             return scope[var_name]
     raise Exception(f'Variable "{var_name}" not found')
+
 
 def assign_var(var_name, value):
     for scope in get_scopes():
@@ -328,12 +331,35 @@ def assign_var(var_name, value):
             return
     raise Exception(f'Variable "{var_name}" not found')
 
+
 def declare_var(var_name, value):
     for scope in get_scopes():
         if var_name in scope:
             raise Exception(f'Variable "{var_name}" already declared')
 
     get_scopes()[0][var_name] = value
+
+
+def extract_params(raw_params):
+    if raw_params == 'empty': return []
+
+    def flatten(params):
+        for i, param in enumerate(params):
+            if isinstance(param, tuple) and (param[0] == 'param' or param[0] == 'exp'):
+                yield from flatten(param)
+            elif i == 1:
+                yield from [param]
+
+    return list(flatten(raw_params))
+
+
+def get_function_scope(func_name, params):
+    try:
+        return dict(
+            zip_equal(extract_params(functions[func_name][1]), [evalExpr(param) for param in extract_params(params)]))
+    except iter_errors.UnequalIterablesError:
+        raise Exception(f'Wrong number of parameters for function "{func_name}"')
+
 
 def evalInst(t):
     debug('Eval inst de', t)
@@ -354,22 +380,7 @@ def evalInst(t):
         functions[t[1][0]] = t[1]
 
     if t[0] == 'call':
-
-        stack.append(('scope', {}))
-
-        try:
-            if functions[t[1]][1] != 'empty' and t[2] != 'empty':
-
-                params = [p for p in functions[t[1]][1] if p != 'param']
-                expressions = [e for e in t[2] if e != 'exp']
-
-                for i in [(params[i], expressions[i]) for i in range(0, len(params))]:
-                    declare_var(i[0], evalExpr(i[1]))
-
-            elif len(functions[t[1]][1]) != len(t[2]):
-                raise ValueError
-        except ValueError:
-            raise Exception('Wrong number of parameters')
+        stack.append(('scope', get_function_scope(t[1], t[2])))
 
         evalInst(functions[t[1]][2])
         stack.pop()
