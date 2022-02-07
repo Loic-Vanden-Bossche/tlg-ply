@@ -1,13 +1,12 @@
 # -----------------------------------------------------------------------------
 # calc.py
 #
-# Expressions arithmétiques sans variables
+# Loïc Vanden Bossche | Enzo Soares
 # -----------------------------------------------------------------------------
 
 from genereTreeGraphviz2 import printTreeGraph
 
 isDebug = False
-
 
 def debug(*args):
     if isDebug: print(args)
@@ -293,32 +292,30 @@ stack = [('scope', {})]
 
 def evalExpr(t):
     debug('eval expr de ', t)
-    if type(t) is bool: return t
-    if type(t) is int: return t
-    if type(t) is str: return get_var(t)
+    if type(t) is bool : return t
+    if type(t) is int  : return t
+    if type(t) is str  : return get_var(t)
     if type(t) is tuple:
-
-        if t[0] == '+': return evalExpr(t[1]) + evalExpr(t[2])
-        if t[0] == '*': return evalExpr(t[1]) * evalExpr(t[2])
-        if t[0] == '/': return evalExpr(t[1]) / evalExpr(t[2])
-        if t[0] == '-': return evalExpr(t[1]) - evalExpr(t[2])
+        if t[0] == '+' : return evalExpr(t[1]) +  evalExpr(t[2])
+        if t[0] == '*' : return evalExpr(t[1]) *  evalExpr(t[2])
+        if t[0] == '/' : return evalExpr(t[1]) /  evalExpr(t[2])
+        if t[0] == '-' : return evalExpr(t[1]) -  evalExpr(t[2])
         if t[0] == '==': return evalExpr(t[1]) == evalExpr(t[2])
         if t[0] == '!=': return evalExpr(t[1]) != evalExpr(t[2])
-        if t[0] == '<': return evalExpr(t[1]) < evalExpr(t[2])
+        if t[0] == '<' : return evalExpr(t[1]) <  evalExpr(t[2])
         if t[0] == '<=': return evalExpr(t[1]) <= evalExpr(t[2])
-        if t[0] == '>': return evalExpr(t[1]) > evalExpr(t[2])
+        if t[0] == '>' : return evalExpr(t[1]) >  evalExpr(t[2])
         if t[0] == '>=': return evalExpr(t[1]) >= evalExpr(t[2])
-        if t[0] == '&': return bool(evalExpr(t[1])) and bool(evalExpr(t[2]))
-        if t[0] == '|': return bool(evalExpr(t[1])) or bool(evalExpr(t[2]))
+        if t[0] == '&' : return bool(evalExpr(t[1])) and bool(evalExpr(t[2]))
+        if t[0] == '|' : return bool(evalExpr(t[1])) or  bool(evalExpr(t[2]))
         if t[0] == 'u-': return -evalExpr(t[1])
-        if t[0] == '!': return not evalExpr(t[1])
+        if t[0] == '!' : return not evalExpr(t[1])
     return 'UNK'
 
 def get_scopes():
     return [scope[1] for scope in stack if scope[0] == 'scope'][::-1]
 
 def get_var(var_name):
-
     for scope in get_scopes():
         if var_name in scope:
             return scope[var_name]
@@ -416,5 +413,5 @@ def evalInst(t):
             stack.pop()
 
 
-s = "var a = 0; for(var i = 1; i < 10; i++) { var b = 1; a = i; print(b);}; print(a);\n"
-yacc.parse(s)
+with open('code.ukn') as f:
+    yacc.parse(f.read())
