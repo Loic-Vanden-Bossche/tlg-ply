@@ -3,7 +3,6 @@
 #
 # Expressions arithmétiques sans variables
 # -----------------------------------------------------------------------------
-import pprint
 
 from genereTreeGraphviz2 import printTreeGraph
 
@@ -289,33 +288,8 @@ import ply.yacc as yacc
 
 yacc.yacc()
 
-scopes = 0
-g_vars = {}
 functions = {}
-
-q = []
-
-breakpoints = {
-    'if': 'empty',
-    'for': 'break',
-    'while': 'break',
-    'func': 'return',
-}
-
-
-def getLastBreakpointIndex():
-    i = 0
-
-    while i < len(q):
-
-        if q[i][0] in breakpoints:
-            return i
-
-        i += 1
-
-    return i
-
-var_stack = [{}]
+stack = [('scope', {})]
 
 def evalExpr(t):
     debug('eval expr de ', t)
@@ -340,27 +314,29 @@ def evalExpr(t):
         if t[0] == '!': return not evalExpr(t[1])
     return 'UNK'
 
+def get_scopes():
+    return [scope[1] for scope in stack if scope[0] == 'scope'][::-1]
 
 def get_var(var_name):
 
-    for scope in var_stack[::-1]:
+    for scope in get_scopes():
         if var_name in scope:
             return scope[var_name]
     raise Exception(f'Variable "{var_name}" not found')
 
 def assign_var(var_name, value):
-    for scope in var_stack[::-1]:
+    for scope in get_scopes():
         if var_name in scope:
             scope[var_name] = value
             return
     raise Exception(f'Variable "{var_name}" not found')
 
 def declare_var(var_name, value):
-    for scope in var_stack[::-1]:
+    for scope in get_scopes():
         if var_name in scope:
             raise Exception(f'Variable "{var_name}" already declared')
 
-    var_stack[-1][var_name] = value
+    get_scopes()[0][var_name] = value
 
 def evalInst(t):
     debug('Eval inst de', t)
@@ -382,7 +358,7 @@ def evalInst(t):
 
     if t[0] == 'call':
 
-        var_stack.append({})
+        stack.append(('scope', {}))
 
         try:
             if functions[t[1]][1] != 'empty' and t[2] != 'empty':
@@ -399,18 +375,18 @@ def evalInst(t):
             raise Exception('Wrong number of parameters')
 
         evalInst(functions[t[1]][2])
-        var_stack.pop()
+        stack.pop()
 
     if t[0] == 'print':
         print(evalExpr(t[1]))
 
     if t[0] == 'bloc':
-        q.append(t[1])
-        evalInst(q[-1])
-        q.pop()
-        q.append(t[2])
-        evalInst(q[-1])
-        q.pop()
+        stack.append(t[1])
+        evalInst(stack[-1])
+        stack.pop()
+        stack.append(t[2])
+        evalInst(stack[-1])
+        stack.pop()
 
     if t[0] == 'if':
         if evalExpr(t[1]):
@@ -427,18 +403,18 @@ def evalInst(t):
 
     if t[0] == 'while':
         while evalExpr(t[1]):
-            var_stack.append({})
+            stack.append(('scope', {}))
             evalInst(t[2])
-            var_stack.pop()
+            stack.pop()
 
     if t[0] == 'for':
         evalInst(t[1])
         while evalExpr(t[2]):
-            var_stack.append({})
+            stack.append(('scope', {}))
             evalInst(t[4])
             evalInst(t[3])
-            var_stack.pop()
+            stack.pop()
 
 
-s = "var a = 0; for(var i = 1; i < 10; i++) { a = i;}; print(a);\n"
+s = "var a = 0; for(var i = 1; i < 10; i++) { var b = 1; a = i; print(b);}; print(a);\n"
 yacc.parse(s)
