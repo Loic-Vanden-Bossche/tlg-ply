@@ -3,6 +3,7 @@
 #
 # Expressions arithmétiques sans variables
 # -----------------------------------------------------------------------------
+import pprint
 
 from genereTreeGraphviz2 import printTreeGraph
 
@@ -20,39 +21,40 @@ reserved = {
     'else': 'ELSE',
     'for': 'FOR',
     'function': 'FUNCTION',
+    'var': 'VARIABLE',
     'return': 'RETURN',
+    'true': 'TRUE',
+    'false': 'FALSE',
 }
 
 tokens = (
-    'NUMBER', 'MINUS',
-    'NAME', 'COMMA',
-    'PLUS', 'TIMES', 'DIVIDE',
-    'LPAREN', 'RPAREN', 'OR',
-    'AND', 'TRUE', 'FALSE', 'SEMI',
-    'LOWER', 'HIGHER', 'EQUAL',
-    'LBRACKET', 'RBRACKET',
-    'NOT'
-) + tuple(reserved.values())
+             'NUMBER', 'MINUS',
+             'NAME', 'COMMA',
+             'PLUS', 'TIMES', 'DIVIDE',
+             'LPAREN', 'RPAREN', 'OR',
+             'AND', 'SEMI',
+             'LOWER', 'HIGHER', 'EQUAL',
+             'LBRACKET', 'RBRACKET',
+             'NOT'
+         ) + tuple(reserved.values())
 
 # Tokens
-t_PLUS     = r'\+'
-t_MINUS    = r'-'
-t_TIMES    = r'\*'
-t_DIVIDE   = r'/'
-t_LPAREN   = r'\('
-t_RPAREN   = r'\)'
+t_PLUS = r'\+'
+t_MINUS = r'-'
+t_TIMES = r'\*'
+t_DIVIDE = r'/'
+t_LPAREN = r'\('
+t_RPAREN = r'\)'
 t_LBRACKET = r'\{'
 t_RBRACKET = r'\}'
-t_OR       = r'\|'
-t_AND      = r'&'
-t_TRUE     = r'T'
-t_FALSE    = r'F'
-t_SEMI     = r';'
-t_EQUAL    = r'='
-t_NOT      = r'!'
-t_LOWER    = r'<'
-t_HIGHER   = r'>'
-t_COMMA    = r','
+t_OR = r'\|'
+t_AND = r'&'
+t_SEMI = r';'
+t_EQUAL = r'='
+t_NOT = r'!'
+t_LOWER = r'<'
+t_HIGHER = r'>'
+t_COMMA = r','
 
 
 def t_NUMBER(t):
@@ -119,15 +121,16 @@ def p_f_bloc_expr(p):
     """fbloc : fbloc out
         | out"""
     if len(p) == 3:
-        p[0] = ('fbloc', p[1], p[2])
+        p[0] = ('bloc', p[1], p[2])
     else:
-        p[0] = ('fbloc', p[1], 'empty')
+        p[0] = ('bloc', p[1], 'empty')
 
 
 def p_out_expr(p):
     """out : return
         | bloc"""
     p[0] = (p[1])
+
 
 def p_return_expr(p):
     """return : RETURN SEMI
@@ -206,6 +209,11 @@ def p_while_expr(p):
     p[0] = ('while', p[3], p[6])
 
 
+def p_var_names_expr(p):
+    """statement : VARIABLE NAME EQUAL expression"""
+    p[0] = ('var', p[2], p[4])
+
+
 def p_names_expr(p):
     """statement : NAME EQUAL expression"""
     p[0] = ('=', p[1], p[3])
@@ -281,69 +289,100 @@ import ply.yacc as yacc
 
 yacc.yacc()
 
-vars = {}
+scopes = 0
+g_vars = {}
 functions = {}
 
+q = []
 
-def evalExpr(t, s_vars):
+breakpoints = {
+    'if': 'empty',
+    'for': 'break',
+    'while': 'break',
+    'func': 'return',
+}
+
+
+def getLastBreakpointIndex():
+    i = 0
+
+    while i < len(q):
+
+        if q[i][0] in breakpoints:
+            return i
+
+        i += 1
+
+    return i
+
+var_stack = [{}]
+
+def evalExpr(t):
     debug('eval expr de ', t)
     if type(t) is bool: return t
     if type(t) is int: return t
-    if type(t) is str: return s_vars[t]
+    if type(t) is str: return get_var(t)
     if type(t) is tuple:
 
-        if t[0] == '+' : return evalExpr(t[1], s_vars) +  evalExpr(t[2], s_vars)
-        if t[0] == '*' : return evalExpr(t[1], s_vars) *  evalExpr(t[2], s_vars)
-        if t[0] == '/' : return evalExpr(t[1], s_vars) /  evalExpr(t[2], s_vars)
-        if t[0] == '-' : return evalExpr(t[1], s_vars) -  evalExpr(t[2], s_vars)
-        if t[0] == '==': return evalExpr(t[1], s_vars) == evalExpr(t[2], s_vars)
-        if t[0] == '!=': return evalExpr(t[1], s_vars) != evalExpr(t[2], s_vars)
-        if t[0] == '<' : return evalExpr(t[1], s_vars) <  evalExpr(t[2], s_vars)
-        if t[0] == '<=': return evalExpr(t[1], s_vars) <= evalExpr(t[2], s_vars)
-        if t[0] == '>' : return evalExpr(t[1], s_vars) >  evalExpr(t[2], s_vars)
-        if t[0] == '>=': return evalExpr(t[1], s_vars) >= evalExpr(t[2], s_vars)
-        if t[0] == '&' : return bool(evalExpr(t[1], s_vars)) and bool(evalExpr(t[2], s_vars))
-        if t[0] == '|' : return bool(evalExpr(t[1], s_vars)) or bool(evalExpr(t[2], s_vars))
-        if t[0] == 'u-': return -evalExpr(t[1], s_vars)
-        if t[0] == '!' : return not evalExpr(t[1], s_vars)
+        if t[0] == '+': return evalExpr(t[1]) + evalExpr(t[2])
+        if t[0] == '*': return evalExpr(t[1]) * evalExpr(t[2])
+        if t[0] == '/': return evalExpr(t[1]) / evalExpr(t[2])
+        if t[0] == '-': return evalExpr(t[1]) - evalExpr(t[2])
+        if t[0] == '==': return evalExpr(t[1]) == evalExpr(t[2])
+        if t[0] == '!=': return evalExpr(t[1]) != evalExpr(t[2])
+        if t[0] == '<': return evalExpr(t[1]) < evalExpr(t[2])
+        if t[0] == '<=': return evalExpr(t[1]) <= evalExpr(t[2])
+        if t[0] == '>': return evalExpr(t[1]) > evalExpr(t[2])
+        if t[0] == '>=': return evalExpr(t[1]) >= evalExpr(t[2])
+        if t[0] == '&': return bool(evalExpr(t[1])) and bool(evalExpr(t[2]))
+        if t[0] == '|': return bool(evalExpr(t[1])) or bool(evalExpr(t[2]))
+        if t[0] == 'u-': return -evalExpr(t[1])
+        if t[0] == '!': return not evalExpr(t[1])
     return 'UNK'
 
-def evalFunc(t, s_vars):
 
-    if t[0] == 'fbloc':
+def get_var(var_name):
 
-        evalFunc(t[1], s_vars)
-        evalFunc(t[2], s_vars)
+    for scope in var_stack[::-1]:
+        if var_name in scope:
+            return scope[var_name]
+    raise Exception(f'Variable "{var_name}" not found')
 
-    if t[0] == 'bloc':
-        evalInst(t[1], s_vars)
-        evalInst(t[2], s_vars)
+def assign_var(var_name, value):
+    for scope in var_stack[::-1]:
+        if var_name in scope:
+            scope[var_name] = value
+            return
+    raise Exception(f'Variable "{var_name}" not found')
 
-    if t[0] == 'return':
-        print('return')
+def declare_var(var_name, value):
+    for scope in var_stack[::-1]:
+        if var_name in scope:
+            raise Exception(f'Variable "{var_name}" already declared')
 
-def evalInst(t, ps_vars=None):
+    var_stack[-1][var_name] = value
 
-    if ps_vars is None:
-        ps_vars = {}
-
-    s_vars = ps_vars
-
+def evalInst(t):
     debug('Eval inst de', t)
 
     if type(t) == 'empty':
         return
 
+    if t[0] == 'var':
+        declare_var(t[1], evalExpr(t[2]))
+
     if t[0] == '=':
-        s_vars[t[1]] = evalExpr(t[2], s_vars)
+        assign_var(t[1], evalExpr(t[2]))
 
     if t[1] == '=':
-        s_vars[t[2]] = evalExpr(t[3], s_vars)
+        assign_var(t[2], evalExpr(t[3]))
 
     if t[0] == 'function':
         functions[t[1][0]] = t[1]
 
     if t[0] == 'call':
+
+        var_stack.append({})
 
         try:
             if functions[t[1]][1] != 'empty' and t[2] != 'empty':
@@ -351,48 +390,55 @@ def evalInst(t, ps_vars=None):
                 params = [p for p in functions[t[1]][1] if p != 'param']
                 expressions = [e for e in t[2] if e != 'exp']
 
-                s_vars = ps_vars.copy()
-
                 for i in [(params[i], expressions[i]) for i in range(0, len(params))]:
-                    s_vars[i[0]] = evalExpr(i[1], s_vars)
+                    declare_var(i[0], evalExpr(i[1]))
 
             elif len(functions[t[1]][1]) != len(t[2]):
                 raise ValueError
         except ValueError:
             raise Exception('Wrong number of parameters')
 
-        evalFunc(functions[t[1]][2], s_vars)
+        evalInst(functions[t[1]][2])
+        var_stack.pop()
 
     if t[0] == 'print':
-        print(evalExpr(t[1], s_vars))
+        print(evalExpr(t[1]))
 
     if t[0] == 'bloc':
-        evalInst(t[1], s_vars)
-        evalInst(t[2], s_vars)
+        q.append(t[1])
+        evalInst(q[-1])
+        q.pop()
+        q.append(t[2])
+        evalInst(q[-1])
+        q.pop()
 
     if t[0] == 'if':
-        if evalExpr(t[1], s_vars):
-            evalInst(t[2], ps_vars.copy())
+        if evalExpr(t[1]):
+            evalInst(t[2])
 
     if t[0] == 'if-else':
-        if evalExpr(t[1], s_vars):
-            evalInst(t[2], ps_vars.copy())
+        if evalExpr(t[1]):
+            evalInst(t[2])
         else:
-            evalInst(t[3], ps_vars.copy())
+            evalInst(t[3])
 
     if t[0] == 'else':
-        evalInst(t[1], ps_vars.copy())
+        evalInst(t[1])
 
     if t[0] == 'while':
-        while evalExpr(t[1], s_vars):
-            evalInst(t[2], ps_vars.copy())
+        while evalExpr(t[1]):
+            var_stack.append({})
+            evalInst(t[2])
+            var_stack.pop()
 
     if t[0] == 'for':
-        evalInst(t[1], s_vars)
-        while evalExpr(t[2], s_vars):
-            evalInst(t[4], ps_vars.copy())
-            evalInst(t[3], ps_vars.copy())
+        evalInst(t[1])
+        while evalExpr(t[2]):
+            var_stack.append({})
+            evalInst(t[4])
+            evalInst(t[3])
+            var_stack.pop()
 
 
-s = "function test() { print(1); return; return; print(1); }; test();\n"
+s = "var a = 0; for(var i = 1; i < 10; i++) { a = i;}; print(a);\n"
 yacc.parse(s)
