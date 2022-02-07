@@ -4,6 +4,7 @@
 # Loïc Vanden Bossche | Enzo Soares
 # -----------------------------------------------------------------------------
 import pprint
+from functools import partial
 from more_itertools import zip_equal, more as iter_errors
 
 from genereTreeGraphviz2 import printTreeGraph
@@ -361,6 +362,18 @@ def get_function_scope(func_name, params):
         raise Exception(f'Wrong number of parameters for function "{func_name}"')
 
 
+def enclose(*instructions, scope=None):
+    if scope is None:
+        scope = {}
+
+    stack.append(('scope', scope))
+
+    for i, instruction in enumerate(instructions):
+        evalInst(instruction)
+
+    stack.pop()
+
+
 def evalInst(t):
     debug('Eval inst de', t)
 
@@ -380,10 +393,7 @@ def evalInst(t):
         functions[t[1][0]] = t[1]
 
     if t[0] == 'call':
-        stack.append(('scope', get_function_scope(t[1], t[2])))
-
-        evalInst(functions[t[1]][2])
-        stack.pop()
+        enclose(functions[t[1]][2], scope=get_function_scope(t[1], t[2]))
 
     if t[0] == 'print':
         print(evalExpr(t[1]))
@@ -398,30 +408,25 @@ def evalInst(t):
 
     if t[0] == 'if':
         if evalExpr(t[1]):
-            evalInst(t[2])
+            enclose(t[2])
 
     if t[0] == 'if-else':
         if evalExpr(t[1]):
-            evalInst(t[2])
+            enclose(t[2])
         else:
-            evalInst(t[3])
+            enclose(t[3])
 
     if t[0] == 'else':
-        evalInst(t[1])
+        enclose(t[1])
 
     if t[0] == 'while':
         while evalExpr(t[1]):
-            stack.append(('scope', {}))
-            evalInst(t[2])
-            stack.pop()
+            enclose(t[2])
 
     if t[0] == 'for':
         evalInst(t[1])
         while evalExpr(t[2]):
-            stack.append(('scope', {}))
-            evalInst(t[4])
-            evalInst(t[3])
-            stack.pop()
+            enclose(t[4], t[3])
 
 
 with open('code.ukn') as f:
