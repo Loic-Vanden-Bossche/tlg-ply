@@ -231,7 +231,7 @@ def p_expression_op_left(p):
 def p_op_right(p):
     """statement : NAME PLUS PLUS
                 | NAME MINUS MINUS"""
-    p[0] = ('++', '=', p[1], (p[2], p[1], 1))
+    p[0] = ('=', p[1], (p[2], p[1], 1))
 
 
 def p_expression_binop(p):
@@ -379,6 +379,11 @@ def enclose(*instructions, s_vars=None):
     stack.pop()
 
 
+def evalStack():
+    evalInst(stack[-1])
+    stack.pop()
+
+
 def evalInst(t):
     debug('Eval inst de', t)
 
@@ -391,9 +396,6 @@ def evalInst(t):
     if t[0] == '=':
         assign_element('vars', t[1], evalExpr(t[2]))
 
-    if t[1] == '=':
-        assign_element('vars', t[2], evalExpr(t[3]))
-
     if t[0] == 'function':
         declare_element('functions', t[1][0], (extract_params(t[1][1]), t[1][2]))
 
@@ -405,11 +407,9 @@ def evalInst(t):
 
     if t[0] == 'bloc':
         stack.append(t[1])
-        evalInst(stack[-1])
-        stack.pop()
+        evalStack()
         stack.append(t[2])
-        evalInst(stack[-1])
-        stack.pop()
+        evalStack()
 
     if t[0] == 'if':
         if evalExpr(t[1]):
