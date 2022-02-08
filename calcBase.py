@@ -106,7 +106,7 @@ def p_start_expr(p):
     p[0] = ('START', p[1])
     print('Arbre de dérivation = ', p[0])
     printTreeGraph(p[0])
-    evalInst(p[1])
+    enclose(p[1])
 
 
 def p_bloc_expr(p):
@@ -287,15 +287,13 @@ import ply.yacc as yacc
 
 yacc.yacc()
 
-functions = {}
-stack = [('scope', {})]
-
+stack = []
 
 def evalExpr(t):
     debug('eval expr de ', t)
     if type(t) is bool: return t
     if type(t) is int: return t
-    if type(t) is str: return get_var(t)
+    if type(t) is str: return get_element('vars', t)
     if type(t) is tuple:
         if t[0] == '+': return evalExpr(t[1]) + evalExpr(t[2])
         if t[0] == '*': return evalExpr(t[1]) * evalExpr(t[2])
@@ -314,31 +312,31 @@ def evalExpr(t):
     return 'UNK'
 
 
-def get_scopes():
-    return [scope[1] for scope in stack if scope[0] == 'scope'][::-1]
+def get_scopes(scope_type):
+    return [scope[1][scope_type] for scope in stack if scope[0] == 'scope'][::-1]
 
 
-def get_var(var_name):
-    for scope in get_scopes():
-        if var_name in scope:
-            return scope[var_name]
-    raise Exception(f'Variable "{var_name}" not found')
+def get_element(elem_type, elem_name):
+    for scope in get_scopes(elem_type):
+        if elem_name in scope:
+            return scope[elem_name]
+    raise Exception(f'{elem_type.rstrip("s")} "{elem_name}" not found')
 
 
-def assign_var(var_name, value):
-    for scope in get_scopes():
-        if var_name in scope:
-            scope[var_name] = value
+def assign_element(elem_type, elem_name, value):
+    for scope in get_scopes(elem_type):
+        if elem_name in scope:
+            scope[elem_name] = value
             return
-    raise Exception(f'Variable "{var_name}" not found')
+    raise Exception(f'{elem_type.rstrip("s")} "{elem_name}" not found')
 
 
-def declare_var(var_name, value):
-    for scope in get_scopes():
-        if var_name in scope:
-            raise Exception(f'Variable "{var_name}" already declared')
+def declare_element(elem_type, elem_name, value):
+    for scope in get_scopes(elem_type):
+        if elem_name in scope:
+            raise Exception(f'{elem_type.rstrip("s")} "{elem_name}" already declared')
 
-    get_scopes()[0][var_name] = value
+    get_scopes(elem_type)[0][elem_name] = value
 
 
 def extract_params(raw_params):
@@ -354,19 +352,26 @@ def extract_params(raw_params):
     return list(flatten(raw_params))
 
 
-def get_function_scope(func_name, params):
+def get_function_params(func_name, params):
     try:
         return dict(
-            zip_equal(extract_params(functions[func_name][1]), [evalExpr(param) for param in extract_params(params)]))
+            zip_equal(get_element('functions', func_name)[0], [evalExpr(param) for param in extract_params(params)]))
     except iter_errors.UnequalIterablesError:
         raise Exception(f'Wrong number of parameters for function "{func_name}"')
 
 
-def enclose(*instructions, scope=None):
-    if scope is None:
-        scope = {}
+def initScope(s_vars=None):
+    if s_vars is None: s_vars = {}
+    return  {
+        'vars': s_vars,
+        'functions': {},
+        'classes': {},
+    }
 
-    stack.append(('scope', scope))
+
+def enclose(*instructions, s_vars=None):
+
+    stack.append(('scope', initScope(s_vars)))
 
     for i, instruction in enumerate(instructions):
         evalInst(instruction)
@@ -381,19 +386,19 @@ def evalInst(t):
         return
 
     if t[0] == 'var':
-        declare_var(t[1], evalExpr(t[2]))
+        declare_element('vars', t[1], evalExpr(t[2]))
 
     if t[0] == '=':
-        assign_var(t[1], evalExpr(t[2]))
+        assign_element('vars', t[1], evalExpr(t[2]))
 
     if t[1] == '=':
-        assign_var(t[2], evalExpr(t[3]))
+        assign_element('vars', t[2], evalExpr(t[3]))
 
     if t[0] == 'function':
-        functions[t[1][0]] = t[1]
+        declare_element('functions', t[1][0], (extract_params(t[1][1]), t[1][2]))
 
     if t[0] == 'call':
-        enclose(functions[t[1]][2], scope=get_function_scope(t[1], t[2]))
+        enclose(get_element('functions', t[1])[1], s_vars=get_function_params(t[1], t[2]))
 
     if t[0] == 'print':
         print(evalExpr(t[1]))
