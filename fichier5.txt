@@ -1,6 +1,6 @@
 function toto(a, b) {
     var x = 2;
-    print(a+b);
+    print(a+b+x);
 };
 toto(3, 5);
 print(x);

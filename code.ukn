@@ -1,12 +1,11 @@
-function test (a,b) {
-    for (var i = 0; i < 10; i++) {
-        var y = 13 + 7;
 
-        print(y);
-    };
+var a = 5;
 
-    print(a);
-
+for (var i = 0; i < 10; i++) {
+    var b = i;
+    a = a + i;
+    print(b);
 };
 
-test(1 + 2,2 - 1);
+print(b);
+print(a);

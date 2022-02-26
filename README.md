@@ -12,13 +12,16 @@ Liste des fonctionnalitées implémantées:
 - incrémentation et affectation élargie
 
 # affectation, print  fichier1.txt
-#'x=4;x=x+3;print(x);'
+#'var x=4; x=x+3; print(x);'
+
 # affectation élargie, affectation  fichier2.txt
-#'x=9; x+=4; x++; print(x);'
+#'var x=9; x-=4; print(x);'
+
 # while, for  fichier3.txt
-#’’’x=4;while(x<30){x=x+3;print(x);} ; #for(i=0 ;i<4 ;i=i+1 ;){print(i*i) ;} ;’’’
+#’’’var x=4; while(x<30) { x=x+3; print(x); }; for(var i=0; i<4; i=i+1) { print(i*i); };’’’
+
 # fonctions void avec paramètres et scopes des variables  fichier4.txt
-#'fonction toto(a, b){print(a+b) ;} toto(3, 5) ;’
+#'function toto(a, b) { print(a+b) ; }; toto(3, 5);’
 
 # preuve du scope des variables  fichier5.txt
-#'function toto(a, b) {var x = 2;print(a+b);};toto(3, 5);print(x);’
+#'function toto(a, b) { var x = 2; print(a+b+x); }; toto(3, 5); print(x);’

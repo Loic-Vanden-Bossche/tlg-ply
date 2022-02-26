@@ -3,11 +3,7 @@
 #
 # Loïc Vanden Bossche | Enzo Soares
 # -----------------------------------------------------------------------------
-import pprint
-from functools import partial
 from more_itertools import zip_equal, more as iter_errors
-
-from genereTreeGraphviz2 import printTreeGraph
 
 isDebug = False
 
@@ -446,24 +442,26 @@ def evalInst(t):
             enclose(t[4], t[3])
 
 # affectation, print  fichier1.txt
-#'x=4;x=x+3;print(x);'
+#'var x=4; x=x+3; print(x);'
 with open('fichier1.txt') as f:
     yacc.parse(f.read())
 
 # affectation élargie, affectation  fichier2.txt
-#'x=9; x+=4; x++; print(x);'
+#'var x=9; x-=4; print(x);'
 with open('fichier2.txt') as f:
     yacc.parse(f.read())
 
 # while, for  fichier3.txt
-#’’’x=4;while(x<30){x=x+3;print(x);} ; #for(i=0 ;i<4 ;i=i+1 ;){print(i*i) ;} ;’’’
+#’’’var x=4; while(x<30) { x=x+3; print(x); }; for(var i=0; i<4; i=i+1) { print(i*i); };’’’
 with open('fichier3.txt') as f:
     yacc.parse(f.read())
 
 #fonctions void avec paramètres et scopes des variables  fichier4.txt
-#'fonction toto(a, b){print(a+b) ;} toto(3, 5) ;’
+#'function toto(a, b) { print(a+b) ; }; toto(3, 5);’
 with open('fichier4.txt') as f:
     yacc.parse(f.read())
-#preuve du scope
+
+#preuve du scope (doit retourner une erreur)  fichier5.txt
+#'function toto(a, b) { var x = 2; print(a+b+x); }; toto(3, 5); print(x);'
 with open('fichier5.txt') as f:
     yacc.parse(f.read())
