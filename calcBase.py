@@ -104,8 +104,8 @@ def p_start_expr(p):
     """start : bloc"""
 
     p[0] = ('START', p[1])
-    print('Arbre de dérivation = ', p[0])
-    printTreeGraph(p[0])
+    print("Arbre de l'input = ", p[0])
+    # printTreeGraph(p[0])
     enclose(p[1])
 
 
@@ -230,8 +230,14 @@ def p_expression_op_left(p):
 
 def p_op_right(p):
     """statement : NAME PLUS PLUS
-                | NAME MINUS MINUS"""
-    p[0] = ('=', p[1], (p[2], p[1], 1))
+                | NAME MINUS MINUS
+                | NAME PLUS EQUAL expression
+                | NAME MINUS EQUAL expression"""
+    if len(p) == 4:
+        p[0] = ('=', p[1], (p[2], p[1], 1))
+    
+    elif len(p) == 5:
+        p[0] = (p[2]+p[3], p[1], p[4])
 
 
 def p_expression_binop(p):
@@ -396,6 +402,12 @@ def evalInst(t):
     if t[0] == '=':
         assign_element('vars', t[1], evalExpr(t[2]))
 
+    if t[0] == '+=':
+        assign_element('vars', t[1], evalExpr(t[2]) + evalExpr(t[1]))
+
+    if t[0] == '-=':
+        assign_element('vars', t[1], evalExpr(t[1]) - evalExpr(t[2]))
+
     if t[0] == 'function':
         declare_element('functions', t[1][0], (extract_params(t[1][1]), t[1][2]))
 
@@ -403,7 +415,7 @@ def evalInst(t):
         enclose(get_element('functions', t[1])[1], s_vars=get_function_params(t[1], t[2]))
 
     if t[0] == 'print':
-        print(evalExpr(t[1]))
+        print(f'calc >{evalExpr(t[1])}')
 
     if t[0] == 'bloc':
         stack.append(t[1])
@@ -433,6 +445,25 @@ def evalInst(t):
         while evalExpr(t[2]):
             enclose(t[4], t[3])
 
+# affectation, print  fichier1.txt
+#'x=4;x=x+3;print(x);'
+with open('fichier1.txt') as f:
+    yacc.parse(f.read())
 
-with open('code.ukn') as f:
+# affectation élargie, affectation  fichier2.txt
+#'x=9; x+=4; x++; print(x);'
+with open('fichier2.txt') as f:
+    yacc.parse(f.read())
+
+# while, for  fichier3.txt
+#’’’x=4;while(x<30){x=x+3;print(x);} ; #for(i=0 ;i<4 ;i=i+1 ;){print(i*i) ;} ;’’’
+with open('fichier3.txt') as f:
+    yacc.parse(f.read())
+
+#fonctions void avec paramètres et scopes des variables  fichier4.txt
+#'fonction toto(a, b){print(a+b) ;} toto(3, 5) ;’
+with open('fichier4.txt') as f:
+    yacc.parse(f.read())
+#preuve du scope
+with open('fichier5.txt') as f:
     yacc.parse(f.read())

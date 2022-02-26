@@ -1,0 +1,4 @@
+function toto(a, b) {
+    print(a+b) ;
+};
+toto(3, 5);
